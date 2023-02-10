@@ -1,14 +1,17 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_map/flutter_map.dart';
+import 'package:geolocator/geolocator.dart';
 import 'package:keko_bike/constants/app_constants.dart';
 import 'package:keko_bike/models/map_marker_model.dart';
-import 'package:flutter_svg/flutter_svg.dart';
-import 'package:latlong2/latlong.dart';
-
+import 'package:keko_bike/pages/searchpage.dart';
 import 'package:keko_bike/utili/widgets/CatagoriesDropDown.dart';
 import 'package:keko_bike/utili/widgets/CustomBottomNavigationBar.dart';
+import 'package:keko_bike/models/map_tracks_model.dart';
+import 'package:keko_bike/models/get_current_location.dart';
+import 'package:google_maps_flutter/google_maps_flutter.dart';
 
 class HomePage extends StatefulWidget {
+  static String id = 'HomePage';
   const HomePage({Key? key}) : super(key: key);
 
   @override
@@ -22,12 +25,15 @@ class _HomePageState extends State<HomePage> with TickerProviderStateMixin {
   int _selectedCatory = -1;
   int _navSelectedIndex = 0;
 
-  late final MapController mapController;
+  // late final MapController mapController;
+  late GoogleMapController mapController;
+  void _onMapCreated(GoogleMapController controller) {
+    mapController = controller;
+  }
 
   @override
   void initState() {
     super.initState();
-    mapController = MapController();
   }
 
   @override
@@ -35,7 +41,7 @@ class _HomePageState extends State<HomePage> with TickerProviderStateMixin {
     return Scaffold(
       appBar: AppBar(
         leading: CatagoriesDropDown(
-            iconList: [
+            iconList: const [
               'assets/icons/location.png',
               'assets/icons/Beach.png',
               'assets/icons/camera.png',
@@ -61,19 +67,31 @@ class _HomePageState extends State<HomePage> with TickerProviderStateMixin {
         selectedIndex: _navSelectedIndex,
         onTap: (a) {
           _navSelectedIndex = a;
-          setState(() {});
+          if (_navSelectedIndex == 2) {
+            Navigator.pushNamed(context, SearchPage.id);
+          }
         },
       ),
       body: Stack(
         children: [
+          GoogleMap(
+            onMapCreated: _onMapCreated,
+            initialCameraPosition: CameraPosition(
+              target: currentLocation,
+              zoom: 11.0,
+            ),
+          ),
           FlutterMap(
             mapController: mapController,
             options: MapOptions(
-              minZoom: 5,
-              maxZoom: 18,
-              zoom: 11,
-              center: currentLocation,
-            ),
+                minZoom: 5,
+                maxZoom: 18,
+                zoom: 11,
+                center: currentLocation,
+                onTap: (a, b) {
+                  selectedIndex = -1;
+                  setState(() {});
+                }),
             layers: [
               TileLayerOptions(
                 urlTemplate:
@@ -82,6 +100,16 @@ class _HomePageState extends State<HomePage> with TickerProviderStateMixin {
                   'mapStyleId': AppConstants.mapBoxStyleId,
                   'accessToken': AppConstants.mapBoxAccessToken,
                 },
+              ),
+              PolylineLayerOptions(
+                polylineCulling: false,
+                polylines: [
+                  Polyline(
+                    points: mapTracks[0].trackPoint,
+                    strokeWidth: 5,
+                    color: Colors.blue,
+                  ),
+                ],
               ),
               MarkerLayerOptions(
                 markers: [
@@ -110,8 +138,15 @@ class _HomePageState extends State<HomePage> with TickerProviderStateMixin {
                             child: AnimatedOpacity(
                               duration: const Duration(milliseconds: 500),
                               opacity: selectedIndex == i ? 1 : 0.5,
-                              child: SvgPicture.asset(
-                                'assets/icons/map_marker.svg',
+                              child: ImageIcon(
+                                const AssetImage(
+                                  'assets/icons/location.png',
+                                ),
+                                color: mapMarkers[i].type == 'track_starting'
+                                    ? Colors.green
+                                    : mapMarkers[i].type == 'track_ending'
+                                        ? Colors.black
+                                        : Colors.red,
                               ),
                             ),
                           ),
@@ -219,6 +254,45 @@ class _HomePageState extends State<HomePage> with TickerProviderStateMixin {
                 );
               },
             ),
+          ),
+          Positioned(
+            top: 5,
+            right: 5,
+            child: Card(
+              elevation: 2,
+              child: Container(
+                color: Color(0xFFFAFAFA),
+                width: 40,
+                height: 100,
+                child: Column(
+                  children: <Widget>[
+                    IconButton(icon: Icon(Icons.add), onPressed: () async {}),
+                    SizedBox(height: 2),
+                    IconButton(icon: Icon(Icons.remove), onPressed: () async {})
+                  ],
+                ),
+              ),
+            ),
+          ),
+          Positioned(
+            top: 110,
+            right: 5,
+            child: Card(
+              elevation: 2,
+              child: Container(
+                color: Color(0xFFFAFAFA),
+                width: 40,
+                height: 50,
+                child: IconButton(
+                    icon: Icon(Icons.my_location),
+                    onPressed: () async {
+                      Position temp = await determinePosition();
+                      currentLocation = LatLng(temp.latitude, temp.longitude);
+                      _animatedMapMove(currentLocation, 11.5);
+                      setState(() {});
+                    }),
+              ),
+            ),
           )
         ],
       ),
@@ -228,12 +302,12 @@ class _HomePageState extends State<HomePage> with TickerProviderStateMixin {
   void _animatedMapMove(LatLng destLocation, double destZoom) {
     // Create some tweens. These serve to split up the transition from one location to another.
     // In our case, we want to split the transition be<tween> our current map center and the destination.
+
     final latTween = Tween<double>(
         begin: mapController.center.latitude, end: destLocation.latitude);
     final lngTween = Tween<double>(
         begin: mapController.center.longitude, end: destLocation.longitude);
     final zoomTween = Tween<double>(begin: mapController.zoom, end: destZoom);
-
     // Create a animation controller that has a duration and a TickerProvider.
     var controller = AnimationController(
         duration: const Duration(milliseconds: 1000), vsync: this);
