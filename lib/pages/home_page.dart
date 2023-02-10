@@ -1,14 +1,14 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_map/flutter_map.dart';
-import 'package:geolocator/geolocator.dart';
+// import 'package:geolocator/geolocator.dart';
 import 'package:keko_bike/constants/app_constants.dart';
 import 'package:keko_bike/models/map_marker_model.dart';
 import 'package:keko_bike/pages/searchpage.dart';
 import 'package:keko_bike/utili/widgets/CatagoriesDropDown.dart';
 import 'package:keko_bike/utili/widgets/CustomBottomNavigationBar.dart';
 import 'package:keko_bike/models/map_tracks_model.dart';
-import 'package:keko_bike/models/get_current_location.dart';
-import 'package:google_maps_flutter/google_maps_flutter.dart';
+// import 'package:keko_bike/models/get_current_location.dart';
+import 'package:latlong2/latlong.dart';
 
 class HomePage extends StatefulWidget {
   static String id = 'HomePage';
@@ -24,15 +24,11 @@ class _HomePageState extends State<HomePage> with TickerProviderStateMixin {
   var currentLocation = AppConstants.myLocation;
   int _selectedCatory = -1;
   int _navSelectedIndex = 0;
-
-  // late final MapController mapController;
-  late GoogleMapController mapController;
-  void _onMapCreated(GoogleMapController controller) {
-    mapController = controller;
-  }
+  late MapController mapController;
 
   @override
   void initState() {
+    mapController = MapController();
     super.initState();
   }
 
@@ -74,13 +70,6 @@ class _HomePageState extends State<HomePage> with TickerProviderStateMixin {
       ),
       body: Stack(
         children: [
-          GoogleMap(
-            onMapCreated: _onMapCreated,
-            initialCameraPosition: CameraPosition(
-              target: currentLocation,
-              zoom: 11.0,
-            ),
-          ),
           FlutterMap(
             mapController: mapController,
             options: MapOptions(
@@ -274,26 +263,26 @@ class _HomePageState extends State<HomePage> with TickerProviderStateMixin {
               ),
             ),
           ),
-          Positioned(
-            top: 110,
-            right: 5,
-            child: Card(
-              elevation: 2,
-              child: Container(
-                color: Color(0xFFFAFAFA),
-                width: 40,
-                height: 50,
-                child: IconButton(
-                    icon: Icon(Icons.my_location),
-                    onPressed: () async {
-                      Position temp = await determinePosition();
-                      currentLocation = LatLng(temp.latitude, temp.longitude);
-                      _animatedMapMove(currentLocation, 11.5);
-                      setState(() {});
-                    }),
-              ),
-            ),
-          )
+          //  Positioned(
+          //   top: 110,
+          //   right: 5,
+          //   child: Card(
+          //     elevation: 2,
+          //     child: Container(
+          //       color: Color(0xFFFAFAFA),
+          //       width: 40,
+          //       height: 50,
+          //       child: IconButton(
+          //           icon: Icon(Icons.my_location),
+          //           onPressed: () async {
+          //             Position temp = await determinePosition();
+          //             currentLocation = LatLng(temp.latitude, temp.longitude);
+          //             _animatedMapMove(currentLocation, 11.5);
+          //             setState(() {});
+          //           }),
+          //     ),
+          //   ),
+          // )
         ],
       ),
     );
